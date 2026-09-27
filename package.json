@@ -1,0 +1,22 @@
+{
+  "name": "immich-workflows-companion-server",
+  "version": "0.1.0",
+  "description": "REST endpoints implementing custom Immich library operations for use in Immich Workflows",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Andrey <andreiled@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@tsconfig/node22": "^22.0.6",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@immich/sdk": "^3.2.2",
+    "express": "^5.2.1"
+  }
+}

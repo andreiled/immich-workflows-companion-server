@@ -1,0 +1,30 @@
+"use strict";
+
+import { AssetResponseDto } from "@immich/sdk";
+import express from "express";
+import { onAssetCreated } from "./handlers/asset-created.js";
+
+const app = express();
+const port = "80";
+
+app.use(express.json());
+
+app.post("/", async (req, res) => {
+    console.log("Received request");
+
+    const trigger = req.body.trigger;
+    if (trigger === "AssetCreate") {
+        const asset = req.body.data.asset as AssetResponseDto;
+        await onAssetCreated(asset);
+
+        res.sendStatus(204);
+    } else {
+        res.status(400).send(`Unexpected trigger: ${trigger}`);
+    }
+
+    console.log("Response sent");
+});
+
+app.listen(port, () => {
+    console.log(`Immich workflows companion server is listening on port ${port}`);
+});
