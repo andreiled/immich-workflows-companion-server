@@ -1,8 +1,13 @@
 "use strict";
 
-import { AssetResponseDto } from "@immich/sdk";
+import { AssetResponseDto, init } from "@immich/sdk";
 import express from "express";
 import { onAssetCreated } from "./handlers/asset-created.js";
+
+init({
+    baseUrl: "http://immich_server:2283/api",
+    apiKey: "NONCE: expect each API call to provide an API key explicitly"
+});
 
 const app = express();
 const port = "80";

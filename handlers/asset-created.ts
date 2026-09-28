@@ -1,4 +1,7 @@
 import { AssetResponseDto, AssetVisibility, searchAssets, updateAssets } from "@immich/sdk";
+import { loadUsersConfig } from "../config.js";
+
+const usersConfigPromise = loadUsersConfig();
 
 export async function onAssetCreated(asset: AssetResponseDto) {
     const originalFileName = asset.originalFileName;
@@ -24,6 +27,7 @@ function isRawImageFile(fileName: string): boolean {
 
 async function onNewDevelopedImageFile(developedImageAsset: AssetResponseDto) {
     console.log("New developed image file detected: %s; looking for the original raw file...", developedImageAsset.originalPath);
+    const apiKey = await getOwnerApiKey(developedImageAsset);
 
     const rawImageBasename = inferRawImageFileBasename(developedImageAsset.originalFileName);
     const filter = {
@@ -31,28 +35,29 @@ async function onNewDevelopedImageFile(developedImageAsset: AssetResponseDto) {
             return {originalFileName: {eq: `${rawImageBasename}${extension}`}};
         })
     };
-    const rawImageAssets = (await searchAssets({metadataSearchDto: {filter}})).assets;
+    const rawImageAssets = (await searchAssets({metadataSearchDto: {filter}}, {headers: {'x-api-key': apiKey}})).assets;
 
     if (rawImageAssets.count === 0) {
         console.log("No raw image file found for %s; do nothing", developedImageAsset.originalPath);
     } else if (!!rawImageAssets.nextCursor) {
         console.warn("Too many raw image files found for %s; do nothing", developedImageAsset.originalPath);
     } else {
-        await archiveAssets(rawImageAssets.items.map(asset => asset.id));
+        await archiveAssets(apiKey, rawImageAssets.items.map(asset => asset.id));
     }
 }
 
 async function onNewRawImageFile(rawImageAsset: AssetResponseDto) {
+    const apiKey = await getOwnerApiKey(rawImageAsset);
     console.log("New raw image file detected: '%s'; looking for associated developed image files...", rawImageAsset.originalPath);
 
     const filter = {originalPath: {startsWith: stripExtension(rawImageAsset.originalPath)}};
-    const assets = (await searchAssets({metadataSearchDto: {filter}})).assets;
+    const assets = (await searchAssets({metadataSearchDto: {filter}}, {headers: {'x-api-key': apiKey}})).assets;
 
     if (assets.count === 0 || (assets.count === 1 && assets.items[0].id === rawImageAsset.id)) {
         console.log("%s has not been developed yet; do nothing", rawImageAsset.originalPath);
     } else {
         console.log("%s has been developed; archiving it...", rawImageAsset.originalPath);
-        await archiveAsset(rawImageAsset.id);
+        await archiveAsset(apiKey, rawImageAsset.id);
     }
 }
 
@@ -80,10 +85,22 @@ function inferRawImageFileBasename(developedImageFileName: string): string {
     }
 }
 
-async function archiveAsset(assetId: string) {
-    await archiveAssets([assetId]);
+async function getOwnerApiKey(asset: {ownerId: string}): Promise<string> {
+    const userConfig = (await usersConfigPromise).find(it => it.userId === asset.ownerId);
+    if (userConfig) {
+        return userConfig.apiKey;
+    } else {
+        throw new Error(`Missing configuration for user id: ${asset.ownerId}`);
+    }
 }
 
-async function archiveAssets(assetIds: string[]) {
-    await updateAssets({assetBulkUpdateDto: {ids: assetIds, visibility: AssetVisibility.Archive}});
+async function archiveAsset(apiKey: string, assetId: string) {
+    await archiveAssets(apiKey, [assetId]);
+}
+
+async function archiveAssets(apiKey: string,assetIds: string[]) {
+    await updateAssets(
+        {assetBulkUpdateDto: {ids: assetIds, visibility: AssetVisibility.Archive}},
+        {headers: {'x-api-key': apiKey}}
+    );
 }
