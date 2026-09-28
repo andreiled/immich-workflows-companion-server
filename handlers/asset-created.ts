@@ -50,13 +50,12 @@ async function onNewRawImageFile(rawImageAsset: AssetResponseDto) {
     const apiKey = await getOwnerApiKey(rawImageAsset);
     console.log("New raw image file detected: '%s'; looking for associated developed image files...", rawImageAsset.originalPath);
 
-    const filter = {originalPath: {startsWith: stripExtension(rawImageAsset.originalPath)}};
-    const assets = (await searchAssets({metadataSearchDto: {filter}}, {headers: {'x-api-key': apiKey}})).assets;
+    const assets = await findDevelopedImageAssets(rawImageAsset);
 
-    if (assets.count === 0 || (assets.count === 1 && assets.items[0].id === rawImageAsset.id)) {
-        console.log("%s has not been developed yet; do nothing", rawImageAsset.originalPath);
+    if (assets.length === 0) {
+        console.log("Raw image file '%s' has not been developed yet; do nothing.", rawImageAsset.originalPath);
     } else {
-        console.log("%s has been developed; archiving it...", rawImageAsset.originalPath);
+        console.log("Found %d developed image asset(s) for '%s'; archiving the latter...", assets.length, rawImageAsset.originalPath);
         await archiveAsset(apiKey, rawImageAsset.id);
     }
 }
@@ -73,6 +72,20 @@ function stripExtension(filePath: string): string {
         return filePath;
     } else {
         return filePath.substring(0, extensionDotIndex);
+    }
+}
+
+function getFileDirPath(asset: AssetResponseDto): string {
+    const lastPathSeparatorIndex = Math.max(asset.originalPath.lastIndexOf("/"), asset.originalPath.lastIndexOf("\\"));
+    if (lastPathSeparatorIndex === -1) {
+        throw new Error(`Invalid data: original file path must include at least one path separator: '${asset.originalPath}', asset id: ${asset.id}.`);
+    } else {
+        const fileName = asset.originalPath.substring(lastPathSeparatorIndex + 1);
+        if (fileName !== asset.originalFileName) {
+            throw new Error(`Invalid data: original file path's basename must match the original file name: '${asset.originalPath}' vs '${asset.originalFileName}', asset id: ${asset.id}.`);
+        }
+
+        return asset.originalPath.substring(0, lastPathSeparatorIndex);
     }
 }
 
@@ -103,4 +116,32 @@ async function archiveAssets(apiKey: string,assetIds: string[]) {
         {assetBulkUpdateDto: {ids: assetIds, visibility: AssetVisibility.Archive}},
         {headers: {'x-api-key': apiKey}}
     );
+}
+async function findDevelopedImageAssets(rawImageAsset: AssetResponseDto): Promise<AssetResponseDto[]> {
+    const apiKey = await getOwnerApiKey(rawImageAsset);
+
+    const filter = {originalFileName: {startsWith: stripExtension(rawImageAsset.originalFileName)}};
+    console.debug("findDevelopedImageAssets: filter: %o", filter);
+
+    const candidates = (await searchAssets({metadataSearchDto: {filter}}, {headers: {'x-api-key': apiKey}})).assets;
+    console.debug("findDevelopedImageAssets: found assets: %o", candidates);
+
+    if (!!candidates.nextCursor) {
+        throw new Error(`Found too many developed image files for ${rawImageAsset.originalPath} (first page has ${candidates.items.length} assets and there's at least one more page). This is not expected and could indicate a bug.`);
+    }
+
+    return candidates.items.filter(candidate => {
+       if (candidate.id === rawImageAsset.id) {
+            return false;
+        }
+
+        const rawFileDir = getFileDirPath(rawImageAsset);
+        const candidateFileDir = getFileDirPath(candidate);
+
+        // Check that the raw image file and the presumed developed image file are stored within the same directory subtree.
+        // This is a safety net against accidentally linking together files that came from different cameras using the same naming pattern.
+        return rawFileDir === candidateFileDir
+            || candidateFileDir.startsWith(rawFileDir + "/")
+            || rawFileDir.startsWith(candidateFileDir + "/");
+    });
 }
