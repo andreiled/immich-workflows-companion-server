@@ -4,6 +4,10 @@ import { AssetResponseDto, init } from "@immich/sdk";
 import express from "express";
 import { onAssetCreated } from "./handlers/asset-created.js";
 
+if (process.env.LOG_LEVEL === 'info') {
+    console.debug = function() {};
+}
+
 init({
     baseUrl: "http://immich_server:2283/api",
     apiKey: "NONCE: expect each API call to provide an API key explicitly"
