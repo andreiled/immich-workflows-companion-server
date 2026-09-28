@@ -10,16 +10,21 @@ const port = "80";
 app.use(express.json());
 
 app.post("/", async (req, res) => {
-    console.log("Received request");
+    console.debug("Received request");
 
-    const trigger = req.body.trigger;
-    if (trigger === "AssetCreate") {
-        const asset = req.body.data.asset as AssetResponseDto;
-        await onAssetCreated(asset);
+    try {
+        const trigger = req.body.trigger;
+        if (trigger === "AssetCreate") {
+            const asset = req.body.data.asset as AssetResponseDto;
+            await onAssetCreated(asset);
 
-        res.sendStatus(204);
-    } else {
-        res.status(400).send(`Unexpected trigger: ${trigger}`);
+            res.sendStatus(204);
+        } else {
+            res.status(400).send(`Unexpected trigger: ${trigger}`);
+        }
+    } catch (error) {
+        console.error("Error processing request:", error);
+        res.status(500).send("Internal Server Error");
     }
 
     console.log("Response sent");

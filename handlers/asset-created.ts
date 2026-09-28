@@ -3,9 +3,9 @@ import { AssetResponseDto, AssetVisibility, searchAssets, updateAssets } from "@
 export async function onAssetCreated(asset: AssetResponseDto) {
     const originalFileName = asset.originalFileName;
     if (isDevelopedImageFile(originalFileName)) {
-        onNewDevelopedImageFile(asset);
+        await onNewDevelopedImageFile(asset);
     } else if (isRawImageFile(originalFileName)) {
-        onNewRawImageFile(asset);
+        await onNewRawImageFile(asset);
     }
 }
 
