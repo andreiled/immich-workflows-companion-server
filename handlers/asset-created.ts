@@ -63,8 +63,8 @@ async function onNewRawImageFile(rawImageAsset: AssetResponseDto) {
 function stripExtension(filePath: string): string {
     // Note: not using `node:path` since its behavior is not platform invariant.
     const lastPathSeparatorIndex = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
-    const extensionDotIndex = filePath.lastIndexOf(".", lastPathSeparatorIndex + 1);
-    if (extensionDotIndex === -1) {
+    const extensionDotIndex = filePath.lastIndexOf(".");
+    if (extensionDotIndex === -1 || extensionDotIndex < lastPathSeparatorIndex) {
         return filePath;
     } else {
         return filePath.substring(0, extensionDotIndex);
