@@ -2,6 +2,7 @@ FROM node:22-alpine as builder
 
 COPY package.json package-lock.json tsconfig.json *.ts /source/
 COPY handlers/*.ts /source/handlers/
+COPY util/*.ts /source/util/
 
 WORKDIR /source
 RUN npm install && npx tsc
