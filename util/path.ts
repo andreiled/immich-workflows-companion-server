@@ -29,6 +29,20 @@ export function getFileDirPath(asset: AssetResponseDto): string {
     }
 }
 
+export function getBasename(path: string) {
+    const lastPathSeparatorIndex = Math.max(
+        // Search backwards starting with the second from the last character in order to ignore a trailing path separator if any.
+        path.lastIndexOf("/", path.length - 2),
+        path.lastIndexOf("\\", path.length - 2)
+    );
+
+    if (lastPathSeparatorIndex === -1) {
+        return path;
+    } else {
+        return path.substring(lastPathSeparatorIndex + 1);
+    }
+}
+
 export function inferRawImageFileBasename(developedImageFileName: string): string {
     const candidateSeparatorIndices = [" ", "_", "-"]
         .map(separator => developedImageFileName.indexOf(separator))
@@ -39,4 +53,18 @@ export function inferRawImageFileBasename(developedImageFileName: string): strin
     } else {
         return developedImageFileName.substring(0, Math.min(...candidateSeparatorIndices));
     }
+}
+
+/**
+ * Checks if the specified directory contains a series of photots.
+ *
+ * This is based on the directory name: any directory containing a series of photos is expected to be named as follows:
+ * `FIRST_FILE_NAME..LAST_FILE_NAME_OR_SEQUENCE_NUMBER`, e.g. _DSC08675..08676_.
+ */
+export function isSeriesDir(dirPath: string): boolean {
+    const dirName = getBasename(dirPath);
+    const rangeSeparatorInd = dirName.indexOf("..");
+
+    // There must be something before and after the range separator.
+    return rangeSeparatorInd > 1 && rangeSeparatorInd + 2 < dirPath.length;
 }

@@ -1,7 +1,7 @@
 import { AssetResponseDto, searchAssets } from "@immich/sdk";
 import { RAW_FILE_EXTENTIONS_LC_DOTTED, RAW_FILE_EXTENTIONS_UC_DOTTED } from "../constants.js";
 import { archiveAssets, getOwnerApiKey } from "../util/immich-sdk.js";
-import { getFileDirPath, inferRawImageFileBasename } from "../util/path.js";
+import { getFileDirPath, inferRawImageFileBasename, isSeriesDir } from "../util/path.js";
 
 export async function onNewDevelopedImageFile(developedImageAsset: AssetResponseDto) {
     console.log("New developed image file detected: %s; looking for the original raw file...", developedImageAsset.originalPath);
@@ -19,6 +19,23 @@ export async function onNewDevelopedImageFile(developedImageAsset: AssetResponse
             rawImageAssets.map(asset => `'${asset.originalPath}'`).join(', '), '.'
         );
         await archiveAssets(apiKey, rawImageAssets);
+
+        const rawImageAssetsInSameSeries = (
+            await Promise.all(rawImageAssets
+                .filter(it => isSeriesDir(getFileDirPath(it)))
+                .map(it => findRawImagesInDir(getFileDirPath(it), apiKey)))
+        ).flat();
+        const additionalRawImageAssetsInSameSeries = rawImageAssetsInSameSeries
+            .filter(it => !rawImageAssets.some(archivedAsset => archivedAsset.id === it.id));
+
+        if (additionalRawImageAssetsInSameSeries.length > 0) {
+            console.log(
+                "Archiving %d other raw image file asset(s) in the series containing the developed image file '%s':",
+                additionalRawImageAssetsInSameSeries.length, developedImageAsset.originalPath,
+                additionalRawImageAssetsInSameSeries.map(asset => `'${asset.originalPath}'`).join(', '), '.'
+            );
+            await archiveAssets(apiKey, additionalRawImageAssetsInSameSeries);
+        }
     }
 }
 
@@ -53,4 +70,21 @@ async function findOriginalRawImageAssets(developedImageAsset: AssetResponseDto)
             || candidateFileDir.startsWith(developedFileDir + "/")
             || developedFileDir.startsWith(candidateFileDir + "/");
     });
+}
+
+async function findRawImagesInDir(dirPath: string, apiKey: string): Promise<AssetResponseDto[]> {
+    const filter = {
+        originalPath: {startsWith: `${dirPath}/`},
+        or: [...RAW_FILE_EXTENTIONS_LC_DOTTED, ...RAW_FILE_EXTENTIONS_UC_DOTTED].map(extension => {
+            return {originalFileName: {endsWith: extension}};
+        })
+    };
+    console.debug("findRawImagesInDir: filter: %o", filter);
+
+    const assetsSearchResult = (await searchAssets({metadataSearchDto: {filter}}, {headers: {'x-api-key': apiKey}})).assets;
+    if (assetsSearchResult.nextCursor) {
+        throw new Error(`Found too many raw image files in ${dirPath} (first page has ${assetsSearchResult.items.length} assets and there's at least one more page). This is not expected and could indicate a bug in how this method is called.`);
+    }
+
+    return assetsSearchResult.items;
 }
