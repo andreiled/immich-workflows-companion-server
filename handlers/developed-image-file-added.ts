@@ -1,6 +1,6 @@
 import { AssetResponseDto, searchAssets } from "@immich/sdk";
 import { archiveAssets, getOwnerApiKey } from "../util/immich-sdk.js";
-import { getFileDirPath, stripExtension  } from "../util/path.js";
+import { getFileDirPath, inferRawImageFileBasename } from "../util/path.js";
 
 export async function onNewDevelopedImageFile(developedImageAsset: AssetResponseDto) {
     console.log("New developed image file detected: %s; looking for the original raw file...", developedImageAsset.originalPath);
@@ -52,13 +52,4 @@ async function findOriginalRawImageAssets(developedImageAsset: AssetResponseDto)
             || candidateFileDir.startsWith(developedFileDir + "/")
             || developedFileDir.startsWith(candidateFileDir + "/");
     });
-}
-
-function inferRawImageFileBasename(developedImageFileName: string): string {
-    const nameSeparatorIndex = Math.max(...[" ", "_", "-"].map(separator => developedImageFileName.indexOf(separator)));
-    if (nameSeparatorIndex === -1) {
-        return stripExtension(developedImageFileName);
-    } else {
-        return developedImageFileName.substring(0, nameSeparatorIndex);
-    }
 }

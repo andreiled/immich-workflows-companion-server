@@ -28,3 +28,15 @@ export function getFileDirPath(asset: AssetResponseDto): string {
         return asset.originalPath.substring(0, lastPathSeparatorIndex);
     }
 }
+
+export function inferRawImageFileBasename(developedImageFileName: string): string {
+    const candidateSeparatorIndices = [" ", "_", "-"]
+        .map(separator => developedImageFileName.indexOf(separator))
+        .filter(it => it !== -1);
+
+    if (candidateSeparatorIndices.length === 0) {
+        return stripExtension(developedImageFileName);
+    } else {
+        return developedImageFileName.substring(0, Math.min(...candidateSeparatorIndices));
+    }
+}
