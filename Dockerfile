@@ -4,8 +4,12 @@ COPY package.json package-lock.json tsconfig.json *.ts /source/
 COPY handlers/*.ts /source/handlers/
 COPY util/*.ts /source/util/
 
+# Test files
+COPY .mocharc.json /source/
+COPY test/ /source/test/
+
 WORKDIR /source
-RUN npm install && npx tsc
+RUN npm install && npm test && npx tsc
 
 FROM node:22-alpine
 
