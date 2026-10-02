@@ -12,13 +12,13 @@ export async function getOwnerApiKey(asset: {ownerId: string}): Promise<string> 
     }
 }
 
-export async function archiveAsset(apiKey: string, assetId: string) {
-    await archiveAssets(apiKey, [assetId]);
+export async function archiveAsset(apiKey: string, asset: {id: string}) {
+    await archiveAssets(apiKey, [asset]);
 }
 
-export async function archiveAssets(apiKey: string,assetIds: string[]) {
+export async function archiveAssets(apiKey: string, assets: {id: string}[]) {
     await updateAssets(
-        {assetBulkUpdateDto: {ids: assetIds, visibility: AssetVisibility.Archive}},
+        {assetBulkUpdateDto: {ids: assets.map(asset => asset.id), visibility: AssetVisibility.Archive}},
         {headers: {'x-api-key': apiKey}}
     );
 }

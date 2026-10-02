@@ -1,4 +1,5 @@
 import { AssetResponseDto, searchAssets } from "@immich/sdk";
+import { RAW_FILE_EXTENTIONS_LC_DOTTED, RAW_FILE_EXTENTIONS_UC_DOTTED } from "../constants.js";
 import { archiveAssets, getOwnerApiKey } from "../util/immich-sdk.js";
 import { getFileDirPath, inferRawImageFileBasename } from "../util/path.js";
 
@@ -17,7 +18,7 @@ export async function onNewDevelopedImageFile(developedImageAsset: AssetResponse
             rawImageAssets.length, developedImageAsset.originalPath,
             rawImageAssets.map(asset => `'${asset.originalPath}'`).join(', '), '.'
         );
-        await archiveAssets(apiKey, rawImageAssets.map(asset => asset.id));
+        await archiveAssets(apiKey, rawImageAssets);
     }
 }
 
@@ -26,7 +27,7 @@ async function findOriginalRawImageAssets(developedImageAsset: AssetResponseDto)
 
     const rawImageFileBasename = inferRawImageFileBasename(developedImageAsset.originalFileName);
     const filter = {
-        or: [".arw", ".cr2", ".nef", ".ARW", ".CR2", ".NEF"].map(extension => {
+        or: [...RAW_FILE_EXTENTIONS_LC_DOTTED, ...RAW_FILE_EXTENTIONS_UC_DOTTED].map(extension => {
             return {originalFileName: {eq: `${rawImageFileBasename}${extension}`}};
         })
     };

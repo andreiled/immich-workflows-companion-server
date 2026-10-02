@@ -12,7 +12,7 @@ export async function onNewRawImageFile(rawImageAsset: AssetResponseDto) {
         console.log("Raw image file '%s' has not been developed yet; do nothing.", rawImageAsset.originalPath);
     } else {
         console.log("Found %d developed image asset(s) for '%s'; archiving the latter...", assets.length, rawImageAsset.originalPath);
-        await archiveAsset(apiKey, rawImageAsset.id);
+        await archiveAsset(apiKey, rawImageAsset);
     }
 }
 
